@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Make the base transparent for the overlay effect */
+html, body, #root {
+  background-color: transparent;
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Prevents scrollbars on the iframe itself */
+} 

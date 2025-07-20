@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extension Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            background-color: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #2d5a2d; }
+        .error { background-color: #5a2d2d; }
+        .info { background-color: #2d2d5a; }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .audio-test {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Project Co-Pilot Extension Test</h1>
+    
+    <div class="test-section">
+        <h2>📋 Extension Status</h2>
+        <div id="extension-status" class="status info">
+            Checking extension status...
+        </div>
+        <button onclick="checkExtension()">Check Extension</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🎵 Audio Test</h2>
+        <div class="audio-test">
+            <p>This audio should be captured by the extension:</p>
+            <audio controls>
+                <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+            <p><small>Note: The extension will capture this audio when you click the extension icon.</small></p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔗 Backend Connection</h2>
+        <div id="backend-status" class="status info">
+            Checking backend connection...
+        </div>
+        <button onclick="checkBackend()">Check Backend</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Instructions</h2>
+        <ol>
+            <li>Make sure the backend is running on port 8001</li>
+            <li>Load the extension in Chrome (chrome://extensions/)</li>
+            <li>Click the extension icon to test</li>
+            <li>Check the console for any errors</li>
+            <li>The overlay should appear and audio should be captured</li>
+        </ol>
+    </div>
+
+    <script>
+        function checkExtension() {
+            const statusDiv = document.getElementById('extension-status');
+            statusDiv.className = 'status info';
+            statusDiv.textContent = 'Checking extension...';
+            
+            // Try to detect if extension is loaded
+            if (typeof chrome !== 'undefined' && chrome.runtime) {
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ Extension environment detected';
+            } else {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ Extension environment not detected';
+            }
+        }
+
+        function checkBackend() {
+            const statusDiv = document.getElementById('backend-status');
+            statusDiv.className = 'status info';
+            statusDiv.textContent = 'Checking backend...';
+            
+            fetch('http://127.0.0.1:8001/')
+                .then(response => response.json())
+                .then(data => {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = `✅ Backend connected: ${data.message}`;
+                })
+                .catch(error => {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = `❌ Backend connection failed: ${error.message}`;
+                });
+        }
+
+        // Auto-check on page load
+        window.onload = function() {
+            checkExtension();
+            checkBackend();
+        };
+    </script>
+</body>
+</html> 

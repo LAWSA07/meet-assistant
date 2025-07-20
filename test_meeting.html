@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Meeting - Project Co-Pilot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .meeting-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .audio-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e8f4fd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="meeting-container">
+        <h1>🎤 Test Meeting Environment</h1>
+        <p>This page simulates a meeting environment for testing Project Co-Pilot.</p>
+        
+        <div class="audio-controls">
+            <h3>Audio Controls</h3>
+            <button id="startAudio">Start Audio</button>
+            <button id="stopAudio">Stop Audio</button>
+            <button id="testMic">Test Microphone</button>
+            <div id="audioStatus" class="status disconnected">Audio: Disconnected</div>
+        </div>
+
+        <div class="meeting-content">
+            <h3>Meeting Content</h3>
+            <p>This is a simulated meeting about Project Co-Pilot development.</p>
+            <p>Topics to discuss:</p>
+            <ul>
+                <li>Backend implementation status</li>
+                <li>Chrome extension testing</li>
+                <li>AI integration progress</li>
+                <li>Next development phases</li>
+            </ul>
+        </div>
+
+        <div class="instructions">
+            <h3>Testing Instructions</h3>
+            <ol>
+                <li>Load the Chrome extension in Developer Mode</li>
+                <li>Click the extension icon to start audio capture</li>
+                <li>Speak into your microphone</li>
+                <li>Check the browser console for WebSocket messages</li>
+                <li>Check the backend console for incoming audio</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let audioStream = null;
+        let audioContext = null;
+        let oscillator = null;
+
+        document.getElementById('startAudio').onclick = async () => {
+            try {
+                // Create a simple audio tone for testing
+                audioContext = new AudioContext();
+                oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // Low volume
+                
+                oscillator.start();
+                
+                document.getElementById('audioStatus').textContent = 'Audio: Playing test tone';
+                document.getElementById('audioStatus').className = 'status connected';
+                
+                console.log('Test audio started - Project Co-Pilot should detect this');
+            } catch (error) {
+                console.error('Error starting audio:', error);
+            }
+        };
+
+        document.getElementById('stopAudio').onclick = () => {
+            if (oscillator) {
+                oscillator.stop();
+                oscillator = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            document.getElementById('audioStatus').textContent = 'Audio: Stopped';
+            document.getElementById('audioStatus').className = 'status disconnected';
+        };
+
+        document.getElementById('testMic').onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                document.getElementById('audioStatus').textContent = 'Audio: Microphone active';
+                document.getElementById('audioStatus').className = 'status connected';
+                console.log('Microphone access granted');
+            } catch (error) {
+                console.error('Microphone access denied:', error);
+                document.getElementById('audioStatus').textContent = 'Audio: Microphone access denied';
+                document.getElementById('audioStatus').className = 'status disconnected';
+            }
+        };
+    </script>
+</body>
+</html> 

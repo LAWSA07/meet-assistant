@@ -1,0 +1,8 @@
+# Placeholder for 48x48 icon
+# In production, replace this with an actual PNG icon file 
+
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="48" height="48" rx="6" fill="#06B6D4"/>
+  <path d="M12 18h24M12 24h18M12 30h12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="36" cy="24" r="4" fill="white"/>
+</svg> 

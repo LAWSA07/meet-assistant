@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background: #d4edda; color: #155724; }
+        .connecting { background: #fff3cd; color: #856404; }
+        .error { background: #f8d7da; color: #721c24; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <div id="status" class="status connecting">Connecting...</div>
+    <button onclick="testConnection()">Test Connection</button>
+    <button onclick="sendMessage()">Send Test Message</button>
+    <div id="log" class="log"></div>
+
+    <script>
+        let ws = null;
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${time}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateStatus(message, className) {
+            status.textContent = message;
+            status.className = `status ${className}`;
+        }
+
+        function connect() {
+            addLog('Attempting to connect to WebSocket...');
+            updateStatus('Connecting...', 'connecting');
+            
+            try {
+                ws = new WebSocket('ws://127.0.0.1:8001/ws/audio');
+                
+                ws.onopen = function(event) {
+                    addLog('✅ WebSocket connection opened');
+                    updateStatus('Connected!', 'connected');
+                };
+                
+                ws.onmessage = function(event) {
+                    addLog('📥 Received: ' + event.data);
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'connection_status') {
+                            updateStatus('Connected: ' + data.message, 'connected');
+                        }
+                    } catch (e) {
+                        addLog('❌ Error parsing message: ' + e);
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    addLog('❌ WebSocket error: ' + error);
+                    updateStatus('Connection error', 'error');
+                };
+                
+                ws.onclose = function(event) {
+                    addLog('🔌 WebSocket connection closed: ' + event.code + ' - ' + event.reason);
+                    updateStatus('Disconnected', 'error');
+                };
+                
+            } catch (error) {
+                addLog('❌ Failed to create WebSocket: ' + error);
+                updateStatus('Failed to connect', 'error');
+            }
+        }
+
+        function testConnection() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                addLog('📤 Sending test message...');
+                ws.send(JSON.stringify({
+                    type: 'test',
+                    message: 'Hello from browser test!'
+                }));
+            } else {
+                addLog('❌ WebSocket not connected');
+            }
+        }
+
+        function sendMessage() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = prompt('Enter a message to send:');
+                if (message) {
+                    addLog('📤 Sending user message: ' + message);
+                    ws.send(JSON.stringify({
+                        type: 'user_message',
+                        message: message
+                    }));
+                }
+            } else {
+                addLog('❌ WebSocket not connected');
+            }
+        }
+
+        // Connect on page load
+        connect();
+    </script>
+</body>
+</html> 
