@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "react-frontend/build"
+
+[secrets_scan]
+  omit_paths = [
+    "react-frontend/public/images/*",
+    "react-frontend/build/images/*"
+  ] 
