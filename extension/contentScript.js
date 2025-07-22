@@ -1,162 +1,206 @@
-let iframe = null;
-let activationArea = null;
-
-function toggleOverlay() {
-  try {
-    console.log('Toggle overlay called');
-    
-    if (iframe) {
-      iframe.remove();
-      iframe = null;
-      if (activationArea) {
-        activationArea.remove();
-        activationArea = null;
-      }
-      console.log('Overlay removed');
-      return;
-    }
-
-    // Check if we can inject into this page
-    if (document.location.protocol === 'chrome:' || 
-        document.location.protocol === 'chrome-extension:' ||
-        document.location.protocol === 'moz-extension:') {
-      console.log('Cannot inject overlay into chrome:// or extension pages');
-      return;
-    }
-
-    iframe = document.createElement('iframe');
-    iframe.src = chrome.runtime.getURL('public/index.html');
-    iframe.style.position = 'fixed';
-    iframe.style.top = '20px';
-    iframe.style.right = '20px';
-    iframe.style.width = '380px';
-    iframe.style.height = '500px';
-    iframe.style.border = 'none';
-    iframe.style.zIndex = '999999';
-    iframe.style.backgroundColor = 'transparent';
-    iframe.style.pointerEvents = 'auto'; // Allow interaction by default
-    iframe.style.borderRadius = '20px';
-    iframe.style.overflow = 'hidden';
-    
-    // Ensure the iframe can be interacted with
-    iframe.onload = function() {
-      try {
-        // Set pointer events on the overlay content
-        const overlayContent = iframe.contentDocument.getElementById('root');
-        if (overlayContent) {
-          overlayContent.style.pointerEvents = 'auto';
-        }
-        
-        // Add some styling to ensure the overlay is visible and interactive
-        const body = iframe.contentDocument.body;
-        if (body) {
-          body.style.pointerEvents = 'auto'; // Allow clicks on body
-        }
-        
-        console.log('Extension iframe loaded and ready for interaction');
-        
-      } catch (e) {
-        console.log('Could not set pointer events on overlay content:', e);
-      }
-    };
-
-    document.body.appendChild(iframe);
-    console.log('Overlay added successfully');
-  } catch (error) {
-    console.error('Error toggling overlay:', error);
-  }
-}
-
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'TOGGLE_OVERLAY') {
-    toggleOverlay();
-  }
-});
-
-// Listen for messages from the iframe
-window.addEventListener('message', (event) => {
-  if (event.data.type === 'CLOSE_OVERLAY') {
-    toggleOverlay();
-  } else if (event.data.type === 'REQUEST_AUDIO') {
-    // Handle audio capture request from iframe
-    handleAudioCapture();
-  } else if (event.data.type === 'STOP_AUDIO') {
-    // Handle audio stop request from iframe
-    stopAudioCapture();
-  }
-});
-
-// Audio capture variables
+// Project Co-Pilot Content Script - Refactored for Clean Overlay and Audio Capture
+let overlay = null;
+let isOverlayVisible = false;
 let audioStream = null;
 let audioContext = null;
 let audioProcessor = null;
+let isAudioActive = false;
 
-async function handleAudioCapture() {
-  try {
-    // Request microphone access from the webpage context
-    audioStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        sampleRate: 16000,
-        channelCount: 1
-      }
-    });
-    
-    // Create audio context for processing
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioContext.createMediaStreamSource(audioStream);
-    
-    // Create script processor for real-time audio processing
-    audioProcessor = audioContext.createScriptProcessor(4096, 1, 1);
-    
-    audioProcessor.onaudioprocess = function(e) {
-      const inputData = e.inputBuffer.getChannelData(0);
-      
-      // Convert float32 to int16 for better compatibility
-      const int16Array = new Int16Array(inputData.length);
-      for (let i = 0; i < inputData.length; i++) {
-        int16Array[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
-      }
-      
-      // Send audio data to iframe for WebSocket transmission
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({
-          type: 'AUDIO_DATA',
-          data: int16Array.buffer
-        }, '*');
-      }
-    };
-    
-    source.connect(audioProcessor);
-    audioProcessor.connect(audioContext.destination);
-    
-    console.log('Audio capture started successfully');
-    
-  } catch (error) {
-    console.error('Error starting audio capture:', error);
-    // Notify iframe of error
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({
-        type: 'AUDIO_ERROR',
-        error: error.message
-      }, '*');
+console.log('🚀 Project Co-Pilot Content Script Loaded');
+
+// Overlay creation and management
+function createOverlay() {
+    if (overlay) return;
+    overlay = document.createElement('iframe');
+    overlay.src = chrome.runtime.getURL('public/overlay.html');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 380px;
+        height: 600px;
+        border: none;
+        border-radius: 16px;
+        z-index: 10000;
+        display: none;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    `;
+    document.body.appendChild(overlay);
+    window.addEventListener('message', handleOverlayMessage);
+    console.log('✅ Overlay created');
+}
+
+function showOverlay() {
+    if (!overlay) createOverlay();
+    overlay.style.display = 'block';
+    isOverlayVisible = true;
+    console.log('👁️ Overlay shown');
+}
+
+function hideOverlay() {
+    if (overlay) {
+        overlay.style.display = 'none';
+        isOverlayVisible = false;
+        stopAudioCapture();
+        console.log('👁️ Overlay hidden');
     }
-  }
+}
+
+function toggleOverlay() {
+    if (isOverlayVisible) {
+        hideOverlay();
+    } else {
+        showOverlay();
+    }
+}
+
+// Audio capture logic (content script only)
+async function startAudioCapture() {
+    if (isAudioActive) return;
+    try {
+        console.log('🎤 Starting audio capture from content script...');
+        audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 16000,
+                channelCount: 1
+            }
+        });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        audioProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+        const source = audioContext.createMediaStreamSource(audioStream);
+        source.connect(audioProcessor);
+        audioProcessor.connect(audioContext.destination);
+        audioProcessor.onaudioprocess = (event) => {
+            if (isAudioActive && overlay && overlay.contentWindow) {
+                const inputData = event.inputBuffer.getChannelData(0);
+                const pcmData = new Int16Array(inputData.length);
+                for (let i = 0; i < inputData.length; i++) {
+                    const s = Math.max(-1, Math.min(1, inputData[i]));
+                    pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                const uint8Array = new Uint8Array(pcmData.buffer);
+                const base64String = btoa(String.fromCharCode.apply(null, uint8Array));
+                overlay.contentWindow.postMessage({ type: 'AUDIO_DATA', data: base64String }, '*');
+            }
+        };
+        isAudioActive = true;
+        if (overlay && overlay.contentWindow) {
+            overlay.contentWindow.postMessage({ type: 'AUDIO_STATUS', status: 'active' }, '*');
+        }
+        console.log('✅ Audio capture started');
+    } catch (error) {
+        console.error('❌ Error starting audio capture:', error);
+        let errorMessage = 'Failed to start audio capture';
+        if (error.name === 'NotAllowedError') {
+            errorMessage = 'Microphone permission denied. Please allow microphone access and try again.';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage = 'No microphone found. Please connect a microphone and try again.';
+        } else if (error.name === 'NotReadableError') {
+            errorMessage = 'Microphone is already in use by another application.';
+        } else {
+            errorMessage = `Audio error: ${error.message}`;
+        }
+        if (overlay && overlay.contentWindow) {
+            overlay.contentWindow.postMessage({ type: 'AUDIO_ERROR', error: errorMessage }, '*');
+        }
+    }
 }
 
 function stopAudioCapture() {
-  if (audioProcessor) {
-    audioProcessor.disconnect();
-    audioProcessor = null;
+    if (!isAudioActive) return;
+    if (audioProcessor) {
+        audioProcessor.disconnect();
+        audioProcessor = null;
+    }
+    if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        audioStream = null;
+    }
+    if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close();
+        audioContext = null;
+    }
+    isAudioActive = false;
+    if (overlay && overlay.contentWindow) {
+        overlay.contentWindow.postMessage({ type: 'AUDIO_STATUS', status: 'stopped' }, '*');
+    }
+    console.log('✅ Audio capture stopped');
+}
+
+// Overlay message handler
+function handleOverlayMessage(event) {
+    if (!overlay || event.source !== overlay.contentWindow) return;
+    const { type } = event.data;
+    switch (type) {
+        case 'START_AUDIO':
+            startAudioCapture();
+            break;
+        case 'STOP_AUDIO':
+            stopAudioCapture();
+            break;
+        case 'CLOSE_OVERLAY':
+            hideOverlay();
+            break;
+        case 'EXTENSION_INTERACTION':
+            // Reserved for future use
+            break;
+    }
+}
+
+// Keyboard shortcut to toggle overlay (Ctrl+Shift+P)
+document.addEventListener('keydown', function(event) {
+    if (event.ctrlKey && event.shiftKey && event.key === 'P') {
+        event.preventDefault();
+        toggleOverlay();
+    }
+});
+
+// Listen for messages from background script
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    switch (request.action) {
+        case 'ping':
+            sendResponse({ success: true, message: 'Content script responding' });
+            break;
+        case 'toggleOverlay':
+            toggleOverlay();
+            sendResponse({ success: true });
+            break;
+        case 'showOverlay':
+            showOverlay();
+            sendResponse({ success: true });
+            break;
+        case 'hideOverlay':
+            hideOverlay();
+            sendResponse({ success: true });
+            break;
+        default:
+            sendResponse({ success: false, error: 'Unknown action' });
+    }
+    return true;
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    stopAudioCapture();
+    if (overlay) {
+        overlay.remove();
+        overlay = null;
+    }
+});
+
+// Initialize overlay creation
+createOverlay();
+console.log('✅ Project Co-Pilot Content Script Initialized');
+
+// Listen for messages from the React application (window)
+window.addEventListener('message', (event) => {
+  if (event.source !== window) return;
+  const message = event.data;
+  if (message && message.source === 'REACT_APP') {
+    chrome.runtime.sendMessage(message, (response) => {
+      window.postMessage({ source: 'EXTENSION', ...response }, '*');
+    });
   }
-  if (audioStream) {
-    audioStream.getTracks().forEach(track => track.stop());
-    audioStream = null;
-  }
-  if (audioContext) {
-    audioContext.close();
-    audioContext = null;
-  }
-  console.log('Audio capture stopped');
-} 
+}); 

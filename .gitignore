@@ -166,4 +166,7 @@ docs/_build/
 
 # Local development
 .local/
-local/ 
+local/
+
+# Environment variable files
+.env.* 

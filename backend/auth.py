@@ -68,9 +68,9 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         raise credentials_exception
     return token_data
 
-async def get_current_user(token_data: TokenData = Depends(verify_token)) -> UserResponse:
+async def get_current_user(users_collection, token_data: TokenData = Depends(verify_token)) -> UserResponse:
     """Get current user from token"""
-    user = await get_user_by_email(email=token_data.email)
+    user = await get_user_by_email(users_collection, email=token_data.email)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -89,16 +89,16 @@ async def get_current_user(token_data: TokenData = Depends(verify_token)) -> Use
         google_id=user.get("google_id")
     )
 
-async def authenticate_user(email: str, password: str):
+async def authenticate_user(users_collection, email: str, password: str):
     """Authenticate user with email and password"""
-    user = await get_user_by_email(email)
+    user = await get_user_by_email(users_collection, email)
     if not user:
         return False
     if not verify_password(password, user["password"]):
         return False
     return user
 
-async def authenticate_github(code: str):
+async def authenticate_github(users_collection, code: str):
     """Authenticate user with GitHub OAuth"""
     if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
@@ -157,10 +157,10 @@ async def authenticate_github(code: str):
             raise HTTPException(status_code=400, detail="No email found in GitHub account")
         
         # Check if user exists
-        user = await get_user_by_github_id(str(github_user["id"]))
+        user = await get_user_by_github_id(users_collection, str(github_user["id"]))
         if not user:
             # Check if user exists with email
-            user = await get_user_by_email(primary_email)
+            user = await get_user_by_email(users_collection, primary_email)
             if user:
                 # Link GitHub account to existing user
                 await update_user(str(user["_id"]), {"github_id": str(github_user["id"])})
@@ -176,12 +176,12 @@ async def authenticate_github(code: str):
                     "updated_at": datetime.utcnow(),
                     "is_active": True
                 }
-                user_id = await create_user(user_data)
-                user = await get_user_by_id(user_id)
+                user_id = await create_user(users_collection, user_data)
+                user = await get_user_by_id(users_collection, user_id)
         
         return user
 
-async def authenticate_google(token: str):
+async def authenticate_google(users_collection, token: str):
     """Authenticate user with Google OAuth"""
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=500, detail="Google OAuth not configured")
@@ -198,10 +198,10 @@ async def authenticate_google(token: str):
         google_user = response.json()
         
         # Check if user exists
-        user = await get_user_by_google_id(google_user["sub"])
+        user = await get_user_by_google_id(users_collection, google_user["sub"])
         if not user:
             # Check if user exists with email
-            user = await get_user_by_email(google_user["email"])
+            user = await get_user_by_email(users_collection, google_user["email"])
             if user:
                 # Link Google account to existing user
                 await update_user(str(user["_id"]), {"google_id": google_user["sub"]})
@@ -217,7 +217,7 @@ async def authenticate_google(token: str):
                     "updated_at": datetime.utcnow(),
                     "is_active": True
                 }
-                user_id = await create_user(user_data)
-                user = await get_user_by_id(user_id)
+                user_id = await create_user(users_collection, user_data)
+                user = await get_user_by_id(users_collection, user_id)
         
         return user 

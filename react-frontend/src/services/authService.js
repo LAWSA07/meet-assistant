@@ -64,12 +64,17 @@ class AuthService {
                 body: JSON.stringify(credentials)
             });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Login failed');
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                throw new Error('Server error: Unable to parse response');
             }
 
-            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || 'Login failed');
+            }
+
             this.setAuth(data.access_token, data.user);
             return data;
         } catch (error) {

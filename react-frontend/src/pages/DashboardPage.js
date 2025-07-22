@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import FloatingAssistantOverlay from '../components/FloatingAssistantOverlay';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [backendStatus, setBackendStatus] = useState('checking');
-  const [meetingData, setMeetingData] = useState(null);
   const [user, setUser] = useState(null);
+  const [showOverlayModal, setShowOverlayModal] = useState(false);
+  const [overlayScope, setOverlayScope] = useState(null);
+  const [showAssistantOverlay, setShowAssistantOverlay] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -40,10 +43,14 @@ const DashboardPage = () => {
     checkBackend();
   }, []);
 
-  const handleLaunchExtension = () => {
-    // In a real scenario, you might check if the extension is installed
-    // or provide instructions on how to install it.
-    alert('Extension launched! (This is a simulation). Please see the extension code for the actual overlay.');
+  const handleLaunchOverlay = () => {
+    setShowOverlayModal(true);
+  };
+
+  const handleOverlayScopeSelect = (scope) => {
+    setOverlayScope(scope);
+    setShowOverlayModal(false);
+    setShowAssistantOverlay(true);
   };
 
   const getStatusColor = () => {
@@ -68,7 +75,7 @@ const DashboardPage = () => {
         {/* Header with user info and logout */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white">Welcome, {user?.full_name || 'User'}!</h1>
+            <h1 className="text-4xl font-bold text-white">Hello {user?.full_name || 'User'},</h1>
             <p className="text-gray-400">{user?.email}</p>
           </div>
           <button
@@ -81,7 +88,7 @@ const DashboardPage = () => {
 
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">Your Co-Pilot Dashboard</h2>
-          <p className="text-gray-400 mb-4">You're all set. Launch the Co-Pilot extension to get started.</p>
+          <p className="text-gray-400 mb-4">You're all set. Launch the Co-Pilot assistant overlay to get started.</p>
           
           {/* Backend Status */}
           <div className={`inline-block px-4 py-2 rounded-lg bg-gray-800 border ${getStatusColor()}`}>
@@ -115,14 +122,14 @@ const DashboardPage = () => {
         {/* Action Buttons */}
         <div className="text-center space-y-4">
           <button 
-            onClick={handleLaunchExtension}
+            onClick={handleLaunchOverlay}
             className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105"
           >
-            Launch Co-Pilot
+            Launch Assistant Overlay
           </button>
           
           <div className="text-gray-500">
-            <p>To see the floating overlay in action, you'll need to load the extension folder as an unpacked extension in your browser.</p>
+            <p>To see the floating overlay in action, click the button above and select your scope.</p>
             <Link to="/" className="text-cyan-400 hover:underline mt-4 inline-block">Go back to Home</Link>
           </div>
         </div>
@@ -150,6 +157,44 @@ const DashboardPage = () => {
                               cd backend && venv\Scripts\activate && uvicorn main:app --host 127.0.0.1 --port 8001
             </code>
           </div>
+        )}
+
+        {showOverlayModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 w-full max-w-md shadow-lg">
+              <h3 className="text-xl font-bold mb-4 text-gray-900">Where do you want to activate the assistant?</h3>
+              <div className="space-y-4">
+                <button
+                  className="w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors"
+                  onClick={() => handleOverlayScopeSelect('tab')}
+                >
+                  This Tab (React-only)
+                </button>
+                <button
+                  className="w-full py-3 px-4 bg-gray-300 text-gray-500 font-semibold rounded-lg cursor-not-allowed"
+                  disabled
+                >
+                  All Tabs in Window (Requires Extension)
+                </button>
+                <button
+                  className="w-full py-3 px-4 bg-gray-300 text-gray-500 font-semibold rounded-lg cursor-not-allowed"
+                  disabled
+                >
+                  All Tabs for Site (Requires Extension)
+                </button>
+              </div>
+              <button
+                className="mt-6 w-full py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                onClick={() => setShowOverlayModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showAssistantOverlay && overlayScope === 'tab' && (
+          <FloatingAssistantOverlay onClose={() => setShowAssistantOverlay(false)} />
         )}
       </div>
     </div>

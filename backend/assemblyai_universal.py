@@ -1,10 +1,9 @@
 """
-AssemblyAI Universal-Streaming Speech-to-Text integration
+AssemblyAI Universal-Streaming Speech-to-Text
 """
 
 import asyncio
 import json
-import base64
 import websockets
 import os
 from typing import Optional, Callable
@@ -20,7 +19,7 @@ if not ASSEMBLYAI_API_KEY:
 
 class AssemblyAIRealtimeSTT:
     """
-    AssemblyAI Universal-Streaming Speech-to-Text using WebSocket API
+    AssemblyAI Universal-Streaming Speech-to-Text
     """
     
     def __init__(self, on_transcript: Optional[Callable] = None):
@@ -34,14 +33,14 @@ class AssemblyAIRealtimeSTT:
         return self._is_connected and self.websocket is not None and self.websocket.open
     
     async def connect(self):
-        """Connect to AssemblyAI Universal-Streaming WebSocket"""
+        """Connect to AssemblyAI Universal-Streaming"""
         if not self.api_key:
             print("[AssemblyAI] Error: No API key configured")
             return False
             
         try:
-            # Try legacy endpoint without model parameters
-            url = "wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&encoding=pcm_s16le"
+            # Universal-Streaming endpoint with correct parameters
+            url = "wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&encoding=pcm_s16le&endpointing=400&punctuate=true&language_code=en"
             
             headers = {
                 "Authorization": self.api_key
@@ -53,7 +52,7 @@ class AssemblyAIRealtimeSTT:
             )
             self._is_connected = True
             
-            print("[AssemblyAI] Connected to Universal-Streaming WebSocket")
+            print("[AssemblyAI] Connected to Universal-Streaming")
             
             # Start listening for messages
             asyncio.create_task(self._listen_for_messages())
@@ -70,7 +69,7 @@ class AssemblyAIRealtimeSTT:
             async for message in self.websocket:
                 data = json.loads(message)
                 
-                # Handle different message types for v2 endpoint
+                # Handle Universal-Streaming message types
                 if "text" in data:
                     text = data["text"]
                     if text and self.on_transcript:
@@ -92,6 +91,13 @@ class AssemblyAIRealtimeSTT:
                     error = data["error"]
                     print(f"[AssemblyAI] Error: {error}")
                     
+                elif "session_begins" in data:
+                    print("[AssemblyAI] Session started successfully")
+                    
+                elif "session_terminated" in data:
+                    print("[AssemblyAI] Session terminated")
+                    self._is_connected = False
+                    
         except websockets.exceptions.ConnectionClosed:
             print("[AssemblyAI] WebSocket connection closed")
             self._is_connected = False
@@ -106,10 +112,8 @@ class AssemblyAIRealtimeSTT:
             return False
             
         try:
-            # Legacy endpoint expects JSON with base64 audio
-            encoded_data = base64.b64encode(audio_chunk).decode("utf-8")
-            json_payload = json.dumps({"audio_data": encoded_data})
-            await self.websocket.send(json_payload)
+            # Universal-Streaming expects raw audio bytes
+            await self.websocket.send(audio_chunk)
             return True
             
         except Exception as e:
@@ -125,11 +129,4 @@ class AssemblyAIRealtimeSTT:
                 print(f"[AssemblyAI] Close error: {e}")
             finally:
                 self.websocket = None
-                self._is_connected = False
-
-# Usage example (to be integrated in main.py):
-# stt = AssemblyAIRealtimeSTT()
-# await stt.connect()
-# await stt.send_audio(audio_chunk)
-# transcript = await stt.receive_transcript()
-# await stt.close() 
+                self._is_connected = False 
