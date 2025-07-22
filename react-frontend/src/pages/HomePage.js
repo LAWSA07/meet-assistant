@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BentoGridDemo } from '../components/bento-grid-demo';
 import { BentoGrid, BentoGridItem } from "../components/ui/bento-grid";
 import { InfiniteMovingCards } from "../components/ui/InfiniteMovingCards";
 import { CardSpotlight } from "../components/ui/card-spotlight";
@@ -331,10 +330,10 @@ const Footer = () => (
       </div>
       <div className="flex flex-wrap gap-8 text-gray-400 text-sm">
         <a href="#features" className="hover:text-white">Features</a>
-        <a href="#" className="hover:text-white">Pricing</a>
-        <a href="#" className="hover:text-white">Docs</a>
-        <a href="#" className="hover:text-white">Blog</a>
-        <a href="#" className="hover:text-white">Contact</a>
+        <button type="button">Pricing</button>
+        <button type="button">Docs</button>
+        <button type="button">Blog</button>
+        <button type="button">Contact</button>
       </div>
       <div className="text-gray-500 text-xs">&copy; {new Date().getFullYear()} Co-Pilot Inc. All rights reserved.</div>
     </div>
