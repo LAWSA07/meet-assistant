@@ -5,5 +5,8 @@
 [secrets_scan]
   omit_paths = [
     "react-frontend/public/images/*",
-    "react-frontend/build/images/*"
+    "react-frontend/build/images/*",
+    "react-frontend/build/static/js/*",
+    "react-frontend/build/static/js/*.map",
+    "react-frontend/src/*"
   ] 
