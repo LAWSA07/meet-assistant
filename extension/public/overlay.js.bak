@@ -1,0 +1,395 @@
+let ws = null;
+let isAudioActive = false;
+let isDragging = false;
+let isMinimized = false;
+let dragOffset = { x: 0, y: 0 };
+let messageCount = 0;
+
+// Audio processing variables
+let audioContext = null;
+let audioStream = null;
+let audioWorkletNode = null;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 Extension overlay loaded');
+  testBackendConnection();
+  connectWebSocket();
+  setupDragging();
+  setupInputHandling();
+  setupButtonHandlers();
+  setupMessageListeners();
+  updateStats();
+});
+
+function testBackendConnection() {
+  console.log('🧪 Testing backend connection...');
+  const apiUrl = 'http://127.0.0.1:8001/';
+  fetch(apiUrl)
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ Backend HTTP connection successful:', data);
+      addMessage('ai', '✅ Backend HTTP connection successful');
+    })
+    .catch(error => {
+      console.log('❌ Backend HTTP connection failed:', error);
+      addMessage('ai', '❌ Backend HTTP connection failed: ' + error.message);
+    });
+}
+
+function connectWebSocket() {
+  console.log('🔌 Attempting to connect to WebSocket...');
+  try {
+    // Use the correct WebSocket URL - ensure it matches the backend
+    const wsUrl = 'ws://127.0.0.1:8001/ws/audio';
+    console.log('🔗 Connecting to WebSocket URL:', wsUrl);
+    
+    ws = new WebSocket(wsUrl);
+    console.log('📡 WebSocket object created:', ws);
+    
+    // Add connection timeout
+    const connectionTimeout = setTimeout(() => {
+      if (ws.readyState === WebSocket.CONNECTING) {
+        console.log('⏰ WebSocket connection timeout');
+        ws.close();
+        updateStatus('disconnected', '🔴 Connection timeout');
+        updateAIStatus('Timeout');
+        addMessage('ai', 'Connection timeout. Please check if the backend is running.');
+      }
+    }, 10000); // 10 second timeout
+    
+    ws.onopen = () => {
+      clearTimeout(connectionTimeout);
+      console.log('✅ WebSocket connection opened successfully');
+      updateStatus('connected', '🟢 Connected to AI backend');
+      updateAIStatus('Connected');
+      addMessage('ai', 'Connected to AI backend successfully! I can now process audio and provide real-time assistance.');
+    };
+    
+    ws.onclose = (event) => {
+      clearTimeout(connectionTimeout);
+      console.log('🔌 WebSocket connection closed:', event.code, event.reason);
+      updateStatus('disconnected', '🔴 Disconnected from AI backend');
+      updateAIStatus('Disconnected');
+      addMessage('ai', 'Connection lost. Trying to reconnect...');
+      
+      // Attempt to reconnect after a delay
+      setTimeout(() => {
+        if (ws.readyState === WebSocket.CLOSED) {
+          console.log('🔄 Attempting to reconnect...');
+          connectWebSocket();
+        }
+      }, 3000);
+    };
+    
+    ws.onerror = (error) => {
+      clearTimeout(connectionTimeout);
+      console.log('❌ WebSocket error:', error);
+      updateStatus('disconnected', '🔴 Connection error');
+      updateAIStatus('Error');
+      addMessage('ai', 'Connection error. Please check if the backend is running at http://127.0.0.1:8001');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📨 Received WebSocket message:', data);
+        
+        if (data.type === 'status') {
+          const payload = data.payload;
+          updateStatus(payload.status, '🟢 ' + payload.message);
+          updateAIStatus('Connected');
+          addMessage('ai', 'Connected to AI backend successfully! I can now process audio and provide real-time assistance.');
+        } else if (data.type === 'llm_response') {
+          const payload = data.payload;
+          if (payload.summary_and_suggestion) {
+            addMessage('ai', '📝 ' + (payload.summary_and_suggestion.summary || 'Processing audio...'));
+            if (payload.summary_and_suggestion.suggestion) {
+              addMessage('ai', '💡 Suggestion: ' + payload.summary_and_suggestion.suggestion);
+            }
+          }
+          if (payload.transcript_chunk) {
+            addMessage('user', '🎤 ' + payload.transcript_chunk);
+          }
+        } else if (data.type === 'error') {
+          addMessage('ai', '❌ Error: ' + data.payload.message);
+        } else {
+          addMessage('ai', '📨 Received: ' + JSON.stringify(data));
+        }
+      } catch (e) {
+        console.error('Error parsing WebSocket message:', e);
+        addMessage('ai', '📨 Received: ' + event.data);
+      }
+    };
+  } catch (error) {
+    console.log('❌ Failed to create WebSocket:', error);
+    updateStatus('disconnected', '🔴 Failed to connect');
+    updateAIStatus('Failed');
+    addMessage('ai', 'Error: ' + error.message);
+  }
+}
+
+function setupMessageListeners() {
+  // Listen for messages from content script
+  window.addEventListener('message', (event) => {
+    console.log('📨 Received message from content script:', event.data);
+    
+    if (event.data.type === 'AUDIO_DATA') {
+      // Forward audio data to WebSocket
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(event.data.data);
+      }
+    } else if (event.data.type === 'AUDIO_STATUS') {
+      if (event.data.status === 'active') {
+        isAudioActive = true;
+        updateAudioStatus('Active');
+        addMessage('ai', '🎤 Audio capture started - I\'m listening to your meeting!');
+      } else if (event.data.status === 'stopped') {
+        isAudioActive = false;
+        updateAudioStatus('Stopped');
+        addMessage('ai', '🔇 Audio capture stopped');
+      }
+    } else if (event.data.type === 'AUDIO_ERROR') {
+      updateAudioStatus('Error');
+      addMessage('ai', '❌ ' + event.data.error);
+    } else if (event.data.type === 'CLOSE_OVERLAY') {
+      closeOverlay();
+    }
+  });
+}
+
+function updateStatus(type, message) {
+  const statusEl = document.getElementById('status');
+  statusEl.className = 'status ' + type;
+  statusEl.innerHTML = message;
+}
+
+function updateAIStatus(status) {
+  document.getElementById('aiStatus').textContent = status;
+}
+
+function updateAudioStatus(status) {
+  document.getElementById('audioStatus').textContent = status;
+}
+
+function addMessage(type, text) {
+  const messagesEl = document.getElementById('messages');
+  const messageEl = document.createElement('div');
+  messageEl.className = 'message ' + type + ' fade-in';
+  messageEl.innerHTML = text;
+  messagesEl.appendChild(messageEl);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  messageCount++;
+  updateStats();
+}
+
+function setupInputHandling() {
+  const input = document.getElementById('userInput');
+  input.addEventListener('focus', () => {
+    notifyInteraction();
+    input.style.borderColor = 'rgba(102, 126, 234, 0.5)';
+  });
+  input.addEventListener('blur', () => {
+    input.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+  });
+  input.addEventListener('keypress', handleKeyPress);
+  input.addEventListener('mousedown', notifyInteraction);
+}
+
+function handleKeyPress(event) {
+  if (event.key === 'Enter') {
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
+    if (text) {
+      addMessage('user', '👤 ' + text);
+      input.value = '';
+      
+      // Send to backend if connected using the new structured format
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        const message = {
+          type: 'user_query',
+          payload: text
+        };
+        console.log('📤 Sending user query:', message);
+        ws.send(JSON.stringify(message));
+      } else {
+        addMessage('ai', '❌ Not connected to backend. Please wait for connection.');
+      }
+    }
+  }
+}
+
+function toggleAudio() {
+  const btn = document.getElementById('audioBtn');
+  
+  if (isAudioActive) {
+    // Request content script to stop audio
+    window.parent.postMessage({ type: 'STOP_AUDIO' }, '*');
+    btn.innerHTML = '<span>🎤</span>Start Audio';
+    btn.className = 'btn';
+  } else {
+    // Request content script to start audio
+    window.parent.postMessage({ type: 'START_AUDIO' }, '*');
+    btn.innerHTML = '<span>⏹️</span>Stop Audio';
+    btn.className = 'btn danger';
+  }
+}
+
+function testLLMResponse() {
+  addMessage('user', '🧪 Testing LLM connection...');
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    const message = {
+      type: 'user_query',
+      payload: 'Hello, this is a test message to verify the LLM is working correctly.'
+    };
+    console.log('🧪 Sending test message:', message);
+    ws.send(JSON.stringify(message));
+  } else {
+    addMessage('ai', '❌ WebSocket not connected. Cannot test LLM.');
+  }
+}
+
+function clearMessages() {
+  const messagesEl = document.getElementById('messages');
+  messagesEl.innerHTML = '<div class="message ai"><strong>🤖 AI Assistant:</strong> Messages cleared. How can I help you?</div>';
+  messageCount = 0;
+  updateStats();
+}
+
+function toggleMinimize() {
+  const root = document.getElementById('root');
+  const btn = document.getElementById('minimizeBtn');
+  const content = document.querySelector('.content');
+  const controls = document.querySelector('.controls');
+  
+  if (isMinimized) {
+    root.style.height = '500px';
+    content.style.display = 'block';
+    controls.style.display = 'flex';
+    btn.innerHTML = '<span>📱</span>Minimize';
+    isMinimized = false;
+  } else {
+    root.style.height = '120px';
+    content.style.display = 'none';
+    controls.style.display = 'flex';
+    btn.innerHTML = '<span>📱</span>Expand';
+    isMinimized = true;
+  }
+}
+
+function updateStats() {
+  document.getElementById('qualityStatus').textContent = messageCount > 10 ? 'Excellent' : 'Good';
+}
+
+function closeOverlay() {
+  if (ws) {
+    ws.close();
+  }
+  window.parent.postMessage({ type: 'CLOSE_OVERLAY' }, '*');
+}
+
+function setupDragging() {
+  const root = document.getElementById('root');
+  const dragHandle = document.querySelector('.drag-handle');
+  
+  dragHandle.addEventListener('mousedown', (e) => {
+    notifyInteraction();
+    isDragging = true;
+    const rect = root.getBoundingClientRect();
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      const x = e.clientX - dragOffset.x;
+      const y = e.clientY - dragOffset.y;
+      root.style.left = x + 'px';
+      root.style.top = y + 'px';
+      root.style.right = 'auto';
+    }
+  });
+  
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+}
+
+function setupButtonHandlers() {
+  console.log('🔧 Setting up button handlers...');
+  
+  // Close button
+  const closeBtn = document.getElementById('closeBtn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      console.log('🔴 Close button clicked');
+      notifyInteraction();
+      closeOverlay();
+    });
+  } else {
+    console.error('❌ Close button not found');
+  }
+  
+  // Audio button
+  const audioBtn = document.getElementById('audioBtn');
+  if (audioBtn) {
+    audioBtn.addEventListener('click', function() {
+      console.log('🎤 Audio button clicked');
+      notifyInteraction();
+      toggleAudio();
+    });
+  } else {
+    console.error('❌ Audio button not found');
+  }
+  
+  // Test button
+  const testBtn = document.getElementById('testBtn');
+  if (testBtn) {
+    testBtn.addEventListener('click', function() {
+      console.log('🧪 Test button clicked');
+      notifyInteraction();
+      testLLMResponse();
+    });
+  } else {
+    console.error('❌ Test button not found');
+  }
+  
+  // Clear button
+  const clearBtn = document.getElementById('clearBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function() {
+      console.log('🗑️ Clear button clicked');
+      notifyInteraction();
+      clearMessages();
+    });
+  } else {
+    console.error('❌ Clear button not found');
+  }
+  
+  // Minimize button
+  const minimizeBtn = document.getElementById('minimizeBtn');
+  if (minimizeBtn) {
+    minimizeBtn.addEventListener('click', function() {
+      console.log('📱 Minimize button clicked');
+      notifyInteraction();
+      toggleMinimize();
+    });
+  } else {
+    console.error('❌ Minimize button not found');
+  }
+  
+  console.log('✅ Button handlers setup complete');
+}
+
+function notifyInteraction() {
+  // Notify parent that user is interacting with extension
+  window.parent.postMessage({ type: 'EXTENSION_INTERACTION' }, '*');
+}
+
+// Make functions globally available for button clicks (fallback)
+window.closeOverlay = closeOverlay;
+window.toggleAudio = toggleAudio;
+window.clearMessages = clearMessages;
+window.toggleMinimize = toggleMinimize;
+window.testLLMResponse = testLLMResponse; 

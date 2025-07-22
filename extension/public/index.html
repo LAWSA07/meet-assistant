@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Co-Pilot Overlay</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        background: transparent;
+        overflow: hidden;
+        user-select: none;
+      }
+      
+      #root {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 380px;
+        height: 500px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        color: white;
+        z-index: 999999;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 
+          0 8px 32px rgba(0, 0, 0, 0.3),
+          0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+        transition: all 0.3s ease;
+        pointer-events: auto;
+      }
+      
+      #root:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+          0 12px 40px rgba(0, 0, 0, 0.4),
+          0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+      }
+      
+      .drag-handle {
+        cursor: move;
+        padding: 12px 15px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 12px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 20px 20px 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        pointer-events: auto;
+        z-index: 1000000;
+      }
+      
+      .drag-handle:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.9);
+      }
+      
+      .header {
+        padding: 15px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.05);
+        pointer-events: auto;
+        z-index: 1000000;
+      }
+      
+      .title {
+        font-size: 18px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        pointer-events: auto;
+      }
+      
+      .close-btn {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.8);
+        cursor: pointer;
+        font-size: 18px;
+        padding: 6px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(10px);
+        pointer-events: auto;
+        z-index: 1000001;
+        position: relative;
+      }
+      
+      .close-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        transform: scale(1.05);
+      }
+      
+      .content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: rgba(255, 255, 255, 0.02);
+        pointer-events: auto;
+        z-index: 1000000;
+      }
+      
+      .content::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      .content::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+      }
+      
+      .content::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+      }
+      
+      .status {
+        padding: 12px 16px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      .status.connected {
+        background: rgba(76, 175, 80, 0.15);
+        border-color: rgba(76, 175, 80, 0.3);
+        color: #4CAF50;
+      }
+      
+      .status.disconnected {
+        background: rgba(244, 67, 54, 0.15);
+        border-color: rgba(244, 67, 54, 0.3);
+        color: #f44336;
+      }
+      
+      .status.connecting {
+        background: rgba(255, 193, 7, 0.15);
+        border-color: rgba(255, 193, 7, 0.3);
+        color: #ffc107;
+      }
+      
+      .messages {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      
+      .message {
+        padding: 10px 12px;
+        margin: 8px 0;
+        border-radius: 10px;
+        font-size: 13px;
+        line-height: 1.4;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(5px);
+      }
+      
+      .message.ai {
+        background: rgba(102, 126, 234, 0.1);
+        border-color: rgba(102, 126, 234, 0.2);
+        color: #667eea;
+      }
+      
+      .message.user {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.9);
+      }
+      
+      .controls {
+        padding: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0 0 20px 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        pointer-events: auto;
+        z-index: 1000000;
+      }
+      
+      .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 100px;
+        justify-content: center;
+        pointer-events: auto;
+        z-index: 1000001;
+        position: relative;
+      }
+      
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      }
+      
+      .btn.secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      
+      .btn.secondary:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+      }
+      
+      .btn.danger {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+      }
+      
+      .btn.danger:hover {
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+      }
+      
+      .input-group {
+        margin: 15px 0;
+      }
+      
+      .input-group input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 13px;
+        backdrop-filter: blur(10px);
+        transition: all 0.2s ease;
+        pointer-events: auto;
+        z-index: 1000001;
+        position: relative;
+      }
+      
+      .input-group input:focus {
+        outline: none;
+        border-color: rgba(102, 126, 234, 0.5);
+        background: rgba(255, 255, 255, 0.15);
+      }
+      
+      .input-group input::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+      }
+      
+      .stats {
+        display: flex;
+        gap: 10px;
+        margin: 10px 0;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+      
+      .stat {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      .pulse {
+        animation: pulse 2s infinite;
+      }
+      
+      @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+      }
+      
+      .fade-in {
+        animation: fadeIn 0.3s ease-in;
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="fade-in">
+      <div class="drag-handle">
+        <span>⋮⋮</span>
+        <span>Drag to move</span>
+        <span>🤖</span>
+      </div>
+      <div class="header">
+        <div class="title">
+          <span>🚀</span>
+          Project Co-Pilot
+        </div>
+        <button class="close-btn" id="closeBtn">×</button>
+      </div>
+      <div class="content">
+        <div id="status" class="status connecting">
+          <span class="pulse">🔄</span>
+          Connecting to AI backend...
+        </div>
+        
+        <div class="stats">
+          <div class="stat">🎤 Audio: <span id="audioStatus">Ready</span></div>
+          <div class="stat">🤖 AI: <span id="aiStatus">Connecting</span></div>
+          <div class="stat">📊 Quality: <span id="qualityStatus">High</span></div>
+        </div>
+        
+        <div class="input-group">
+          <input type="text" id="userInput" placeholder="Ask me anything about this meeting...">
+        </div>
+        
+        <div id="messages" class="messages">
+          <div class="message ai">
+            <strong>🤖 AI Assistant:</strong> Hello! I'm ready to help you with your meeting. I can provide real-time summaries, answer questions, and offer suggestions.
+          </div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="audioBtn">
+          <span>🎤</span>
+          Start Audio
+        </button>
+        <button class="btn secondary" id="testBtn">
+          <span>🧪</span>
+          Test LLM
+        </button>
+        <button class="btn secondary" id="clearBtn">
+          <span>🗑️</span>
+          Clear
+        </button>
+        <button class="btn secondary" id="minimizeBtn">
+          <span>📱</span>
+          Minimize
+        </button>
+      </div>
+    </div>
+
+    <script src="overlay.js"></script>
+  </body>
+</html> 

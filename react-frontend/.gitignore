@@ -21,3 +21,5 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Do NOT ignore /lib or /src/lib so utility files are tracked

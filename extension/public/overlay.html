@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Co-Pilot</title>
+    <link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+    <div id="overlay" class="overlay">
+        <!-- Drag Handle -->
+        <div id="drag-handle" class="drag-handle">
+            <div class="drag-dots">⋮⋮</div>
+            <span>Drag to move</span>
+            <span class="robot-icon">🤖</span>
+        </div>
+
+        <!-- Header -->
+        <div class="header">
+            <div class="title">
+                <span class="rocket-icon">🚀</span>
+                <span>Project Co-Pilot</span>
+            </div>
+            <button id="close-button" class="close-button">✕</button>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-icon">🎤</span>
+                <span id="status-indicator" class="status ready">🟢 Ready</span>
+            </div>
+            <div class="status-item">
+                <span class="status-icon">🤖</span>
+                <span id="ai-status" class="ai-status ready">Ready</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <!-- Summary Area -->
+            <div class="summary-section">
+                <div id="summary-area" class="summary-area">
+                    <div class="summary-placeholder">
+                        <span class="icon">📋</span>
+                        <span>Meeting summary will appear here</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conversation Log -->
+            <div class="conversation-section">
+                <div class="section-header">
+                    <span class="icon">💬</span>
+                    <span>Conversation</span>
+                </div>
+                <div id="conversation-log" class="conversation-log">
+                    <!-- Messages will be added here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button id="start-button" class="control-button primary">
+                <span class="button-icon">🎤</span>
+                <span>Start Meeting</span>
+            </button>
+            <button id="stop-button" class="control-button danger" style="display: none;">
+                <span class="button-icon">⏹️</span>
+                <span>Stop Meeting</span>
+            </button>
+            <button id="clear-button" class="control-button secondary">
+                <span class="button-icon">🗑️</span>
+                <span>Clear</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="overlay.js"></script>
+</body>
+</html> 
