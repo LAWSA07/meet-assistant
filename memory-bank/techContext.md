@@ -4,7 +4,7 @@
 - **Frontend:** Chrome extension (HTML, CSS, JavaScript; optional React for overlay UI)
 - **Backend:** Python (FastAPI)
 - **Real-Time Communication:** WebSocket (client and server)
-- **STT:** Open-source (Whisper, DeepSpeech, Wav2Vec 2.0, RealtimeSTT) or free-tier APIs (Deepgram, AssemblyAI, Google STT)
+- **STT:** Open-source (Whisper, DeepSpeech, Wav2Vec 2.0, RealtimeSTT) or free-tier APIs (Deepgram, Google STT)
 - **LLM:** Free-tier APIs (Gemini, Claude, OpenRouter, Hugging Face) or open-source models (BART, T5, LLaMA, Gemma, Falcon) via Ollama/LM Studio/Jan
 - **Hosting:** PythonAnywhere, Google App Engine, HelioHost (free tiers)
 - **Database:** Optional for MVP; file-based or in-memory, with future support for PostgreSQL or vector DB (FAISS, Pinecone)

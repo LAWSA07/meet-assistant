@@ -49,7 +49,6 @@ cd src && npm start
 ```bash
 # Install Heroku CLI
 heroku create your-app-name
-heroku config:set ASSEMBLYAI_API_KEY=your_key
 heroku config:set GOOGLE_GEMINI_API_KEY=your_key
 heroku config:set MONGODB_URL=your_mongodb_url
 heroku config:set JWT_SECRET_KEY=your_secret
@@ -167,7 +166,6 @@ PORT=8001
 MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/project_co_pilot
 
 # Production API keys
-ASSEMBLYAI_API_KEY=your_production_key
 GOOGLE_GEMINI_API_KEY=your_production_key
 
 # Secure JWT secret
@@ -292,7 +290,7 @@ FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
 2. **Environment Variables Not Loading**
    ```bash
    # Check if .env is loaded
-   python -c "import os; print(os.getenv('ASSEMBLYAI_API_KEY'))"
+   python -c "import os; print(os.getenv('GOOGLE_GEMINI_API_KEY'))"
    ```
 
 3. **CORS Errors**

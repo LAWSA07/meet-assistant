@@ -29,7 +29,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8001/');
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/`);
         if (response.ok) {
           setBackendStatus('connected');
         } else {
@@ -139,7 +139,7 @@ const DashboardPage = () => {
           <div className="mt-8 bg-green-900/20 border border-green-500/50 p-4 rounded-lg">
             <h3 className="text-green-400 font-bold mb-2">✅ Backend Ready</h3>
             <p className="text-green-300 text-sm">
-              Your FastAPI backend is running on <code className="bg-green-900/50 px-1 rounded">http://127.0.0.1:8001</code>
+              Your FastAPI backend is running on <code className="bg-green-900/50 px-1 rounded">{process.env.REACT_APP_API_BASE_URL}</code>
             </p>
             <p className="text-green-300 text-sm mt-1">
               The extension will automatically connect to this backend for real-time AI processing.

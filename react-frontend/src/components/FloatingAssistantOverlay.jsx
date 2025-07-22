@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Rnd } from 'react-rnd';
 
-const WS_URL = process.env.REACT_APP_WS_URL || 'ws://127.0.0.1:8001/ws/assistant';
+const WS_URL = process.env.REACT_APP_WS_URL || '';
 
 const FloatingAssistantOverlay = ({ onClose }) => {
   const [transcript, setTranscript] = useState([]);

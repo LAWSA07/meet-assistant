@@ -126,7 +126,7 @@ const Stats = () => {
   const [stats, setStats] = useState({ active_users: 0, meetings_transcribed: 0, hours_of_insights: 0 });
 
   useEffect(() => {
-    fetch('http://localhost:8001/stats')
+    fetch(`${process.env.REACT_APP_API_BASE_URL}/stats`)
       .then(res => res.json())
       .then(data => setStats(data));
   }, []);

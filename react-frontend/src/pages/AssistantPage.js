@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const WS_URL = process.env.REACT_APP_WS_URL || 'ws://127.0.0.1:8001/ws/assistant';
+const WS_URL = process.env.REACT_APP_WS_URL || '';
 
 // --- Logo (styled text) ---
 const Logo = () => (

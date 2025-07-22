@@ -53,7 +53,7 @@ We take security vulnerabilities seriously. If you discover a security issue, pl
 
 ### Data Protection
 - **No Data Storage**: Audio transcripts are processed in-memory only
-- **Secure APIs**: Uses official AssemblyAI and Google Cloud APIs
+- **Secure APIs**: Uses official Google Cloud APIs
 - **JWT Tokens**: Secure authentication with proper token management
 - **CORS Protection**: Properly configured cross-origin resource sharing
 

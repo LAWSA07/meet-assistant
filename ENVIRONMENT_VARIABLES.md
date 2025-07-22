@@ -25,19 +25,6 @@ MONGODB_DB_NAME=project_co_pilot
 2. Create a database named `project_co_pilot`
 3. For Atlas: Use connection string like `mongodb+srv://username:password@cluster.mongodb.net/project_co_pilot`
 
-### 🎤 AssemblyAI (Speech-to-Text)
-```env
-ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
-```
-
-**Setup Instructions:**
-1. Sign up at [AssemblyAI](https://www.assemblyai.com/)
-2. Go to your account dashboard
-3. Copy your API key
-4. Add to `.env` file
-
-**Pricing:** Free tier includes 5 hours of audio processing per month
-
 ### 🤖 Google Gemini (LLM)
 ```env
 GOOGLE_GEMINI_API_KEY=your_google_gemini_api_key_here
