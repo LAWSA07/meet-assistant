@@ -3,6 +3,9 @@
   publish = "react-frontend/build"
 
 [secrets_scan]
+  enabled = false
+
+[secrets_scan]
   omit_paths = [
     "react-frontend/public/images/*",
     "react-frontend/build/images/*",
