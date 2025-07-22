@@ -30,4 +30,4 @@ export const BentoGridItem = ({ className, title, description, header, icon }) =
       </div>
     </div>
   </div>
-); 
+);
